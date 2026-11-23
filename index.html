@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VAPOR-SYNTAX // Analizador Sintáctico</title>
+  
+  <!-- Tipografías retro-futuristas y monoespaciadas -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Orbitron:wght@500;700;900&family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="vapor-theme">
+  <!-- Fondo animado Vaporwave: Grid horizon y Sol degradado -->
+  <div class="synth-background">
+    <div class="stars-layer"></div>
+    <div class="vapor-sun"></div>
+    <div class="horizon-glow"></div>
+    <div class="grid-plane"></div>
+    <div class="scanlines-overlay"></div>
+  </div>
+
+  <div class="app-shell">
+    <!-- Barra Superior Académica -->
+    <header class="top-nav">
+      <div class="nav-brand">
+        <div class="brand-logo-icon">
+          <span class="icon-bracket">&lt;/&gt;</span>
+        </div>
+        <div class="brand-titles">
+          <span class="academic-course-tag">LENGUAJES Y AUTÓMATAS I // RECURSIVE DESCENT PARSER</span>
+          <h1 class="brand-title">VAPOR-SYNTAX <span class="title-sub">// Analizador Sintáctico</span></h1>
+        </div>
+      </div>
+
+      <div class="nav-status-cluster">
+        <div class="badge-chip academic-badge">
+          <span class="pulse-indicator cyan"></span>
+          <span>COMPILADOR v2.4</span>
+        </div>
+        <div class="badge-chip mode-badge">
+          <span class="badge-label">PANIC-MODE SYNC</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Contenedor Principal: Editor + Panel de Resultados -->
+    <main class="main-workspace">
+      <!-- PANEL IZQUIERDO: Editor de Código -->
+      <section class="workspace-card editor-panel glass-panel">
+        <div class="panel-header">
+          <div class="panel-title-group">
+            <span class="panel-icon">⚡</span>
+            <h2>EDITOR DE CÓDIGO FUENTE</h2>
+            <span class="syntax-info-tag">Sintaxis C-Like / Script</span>
+          </div>
+
+          <!-- Acciones del Editor: Importar, Limpiar, Ejecutar (SIN EJEMPLOS PRECARGADOS) -->
+          <div class="editor-actions">
+            <label class="btn btn-secondary file-upload-btn" title="Cargar archivo de código (.txt, .c, .cpp, .java, .js, .py)">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Importar</span>
+              <input type="file" id="fileInput" accept=".txt,.c,.cpp,.h,.java,.js,.ts,.py,.cs" style="display:none;">
+            </label>
+
+            <button id="btnClear" class="btn btn-ghost" title="Limpiar todo el editor">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span>Limpiar</span>
+            </button>
+
+            <button id="btnAnalyze" class="btn btn-primary glow-cyan" title="Ejecutar Análisis Sintáctico (Ctrl + Enter)">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>EJECUTAR ANÁLISIS</span>
+              <kbd class="shortcut-tag">Ctrl + Enter</kbd>
+            </button>
+          </div>
+        </div>
+
+        <!-- Área de Edición con Numeración y Resaltado de Errores -->
+        <div class="code-editor-wrapper" id="editorWrapper">
+          <div class="line-numbers" id="lineNumbers">1</div>
+          <div class="editor-stage">
+            <!-- Capa de fondo que resalta líneas con errores y subrayados -->
+            <div class="editor-highlights" id="editorHighlights"></div>
+            <!-- Textarea interactivo para entrada de código (INICIA COMPLETAMENTE VACÍO) -->
+            <textarea id="codeEditor" spellcheck="false" placeholder="// Ingrese o importe su código fuente aquí...
+// El analizador evaluará declaraciones, asignaciones, expresiones lógicas/aritméticas,
+// estructuras if/else, bucles while/for, llamadas a funciones y delimitadores." autocomplete="off" autocapitalize="off"></textarea>
+          </div>
+        </div>
+
+        <!-- Barra de Estado Inferior del Editor -->
+        <div class="editor-statusbar">
+          <div class="status-left">
+            <span class="status-metric" id="cursorPosition">Línea: 1, Col: 1</span>
+            <span class="status-separator">|</span>
+            <span class="status-metric" id="charCount">0 caracteres</span>
+            <span class="status-separator">|</span>
+            <span class="status-metric" id="lineCount">1 líneas</span>
+          </div>
+          <div class="status-right">
+            <span class="tab-size-tag">Tabulación: 4 espacios</span>
+            <span class="encoding-tag">UTF-8</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PANEL DERECHO: Diagnóstico, Árbol AST y Flujo Léxico -->
+      <section class="workspace-card results-panel glass-panel">
+        <!-- Navegación por Pestañas -->
+        <div class="tabs-header">
+          <button class="tab-button active" data-tab="tab-diagnostics">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>DIAGNÓSTICO SINTÁCTICO</span>
+            <span class="tab-counter" id="errorBadgeCount">0</span>
+          </button>
+
+          <button class="tab-button" data-tab="tab-ast" id="tabBtnAst">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="5" r="3"></circle>
+              <circle cx="5" cy="19" r="3"></circle>
+              <circle cx="19" cy="19" r="3"></circle>
+              <path d="M12 8v4m-4.5 4L10 14m4 0l2.5 2"></path>
+            </svg>
+            <span>ÁRBOL SINTÁCTICO (AST)</span>
+          </button>
+
+          <button class="tab-button" data-tab="tab-tokens">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" y1="9" x2="20" y2="9"></line>
+              <line x1="4" y1="15" x2="20" y2="15"></line>
+              <line x1="10" y1="3" x2="8" y2="21"></line>
+              <line x1="16" y1="3" x2="14" y2="21"></line>
+            </svg>
+            <span>FLUJO LÉXICO (TOKENS)</span>
+          </button>
+        </div>
+
+        <div class="tabs-body">
+          <!-- PESTAÑA 1: Diagnóstico Sintáctico -->
+          <div class="tab-pane active" id="tab-diagnostics">
+            <!-- Banner de Estado General -->
+            <div class="status-banner idle" id="analysisStatusBanner">
+              <div class="banner-icon-box">
+                <span class="banner-icon" id="bannerIcon">🛸</span>
+              </div>
+              <div class="banner-info">
+                <h3 class="banner-title" id="bannerTitle">LISTO PARA EL ANÁLISIS</h3>
+                <p class="banner-subtitle" id="bannerSubtitle">Presione "Ejecutar Análisis" o use Ctrl + Enter para evaluar la sintaxis.</p>
+              </div>
+              <div class="banner-metrics" id="bannerMetrics">
+                <div class="metric-item">
+                  <span class="metric-label">Tiempo</span>
+                  <span class="metric-value" id="metricTime">0 ms</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Tokens</span>
+                  <span class="metric-value" id="metricTokens">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de Tarjetas de Diagnóstico de Errores -->
+            <div class="diagnostics-container">
+              <div class="diagnostics-header">
+                <h4>REGISTRO DE DIAGNÓSTICOS</h4>
+                <span class="diagnostics-summary" id="diagnosticsSummary">Esperando entrada...</span>
+              </div>
+              <div class="error-cards-list" id="errorCardsList">
+                <div class="empty-state-notice">
+                  <div class="empty-icon">🛰️</div>
+                  <h5>Sin análisis en curso</h5>
+                  <p>Escriba o importe código fuente en el editor y presione <strong>EJECUTAR ANÁLISIS</strong> para validar su gramática y detectar errores.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PESTAÑA 2: Visualizador Interactivo del AST -->
+          <div class="tab-pane" id="tab-ast">
+            <div class="ast-toolbar">
+              <div class="ast-title-group">
+                <span class="ast-badge">Árbol de Sintaxis Abstracta</span>
+                <span class="ast-nodes-count" id="astNodesCount">0 nodos generados</span>
+              </div>
+              <div class="ast-controls">
+                <button class="btn-tool" id="btnZoomIn" title="Acercar (+)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                </button>
+                <button class="btn-tool" id="btnZoomOut" title="Alejar (-)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                </button>
+                <button class="btn-tool" id="btnFitTree" title="Ajustar y Centrar Vista">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                </button>
+                <div class="tool-separator"></div>
+                <button class="btn-tool" id="btnExportSvg" title="Descargar como SVG vectorial">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>SVG</span>
+                </button>
+                <button class="btn-tool" id="btnExportPng" title="Descargar como imagen PNG de alta resolución">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>PNG</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Contenedor del Lienzo SVG del AST con soporte Pan & Zoom -->
+            <div class="ast-canvas-viewport" id="astViewport">
+              <svg id="astSvg" class="ast-svg-root" width="100%" height="100%">
+                <defs>
+                  <linearGradient id="gradLink" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stop-color="#9b5de5" stop-opacity="0.9" />
+                    <stop offset="100%" stop-color="#00f5d4" stop-opacity="0.9" />
+                  </linearGradient>
+                  <filter id="neonGlowCyan" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#00f5d4" flood-opacity="0.8"/>
+                  </filter>
+                  <filter id="neonGlowMagenta" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#ff2a85" flood-opacity="0.8"/>
+                  </filter>
+                  <filter id="neonGlowPurple" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#9b5de5" flood-opacity="0.8"/>
+                  </filter>
+                </defs>
+                <g id="astTransformGroup"></g>
+              </svg>
+
+              <!-- Mensaje cuando hay errores o árbol vacío -->
+              <div class="ast-placeholder" id="astPlaceholder">
+                <div class="placeholder-icon">🔮</div>
+                <h4>Árbol Sintáctico no disponible</h4>
+                <p id="astPlaceholderMsg">El Árbol de Sintaxis Abstracta (AST) se generará automáticamente cuando el código sea <strong>100% sintácticamente correcto</strong>.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- PESTAÑA 3: Flujo Léxico (Tokens reconocidos) -->
+          <div class="tab-pane" id="tab-tokens">
+            <div class="tokens-toolbar">
+              <span class="tokens-count-label" id="tokensCountLabel">0 tokens extraídos</span>
+              <div class="tokens-filter-box">
+                <input type="text" id="tokenFilterInput" placeholder="Filtrar por lexema o tipo..." class="neon-input">
+              </div>
+            </div>
+            <div class="tokens-table-wrapper">
+              <table class="tokens-table" id="tokensTable">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Tipo de Token</th>
+                    <th>Lexema Reconocido</th>
+                    <th>Línea</th>
+                    <th>Columna</th>
+                  </tr>
+                </thead>
+                <tbody id="tokensTableBody">
+                  <tr>
+                    <td colspan="5" class="table-empty">Sin tokens analizados. Ejecute el análisis para ver el flujo léxico.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- PIE DE PÁGINA ACADÉMICO -->
+    <footer class="academic-footer">
+      <div class="footer-academic-info">
+        <span class="univ-badge">INSTITUTO TECNOLÓGICO DE PACHUCA</span>
+        <span class="separator">|</span>
+        <span class="student-info"><strong>Alumnos:</strong> Fernando Vidal Delgado (<strong>23200905</strong>) y Jordan Vicente Vite Gomez (<strong>23200908</strong>)</span>
+        <span class="separator">|</span>
+        <span class="prof-info"><strong>Catedrático:</strong> Mtro. Diego David Pérez Spíndola</span>
+      </div>
+      <div class="footer-system-status">
+        <span class="system-tag">ANÁLISIS DESCENDENTE RECURSIVO // VAPOR-SYNTAX ENGINE</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- SCRIPTS MODULARES -->
+  <script src="lexer.js"></script>
+  <script src="parser.js"></script>
+  <script src="astVisualizer.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
